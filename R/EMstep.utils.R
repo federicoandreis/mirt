@@ -2,21 +2,29 @@ Estep <- function(pars, Data, gTheta, prior, Prior, Priorbetween, specific, site
                   itemloc, CUSTOM.IND, dentype, ngroups, rlist, full, Etable = TRUE){
     LL <- 0
     tabdata <- if(full) Data$fulldata[[1L]] else Data$tabdatalong
-    for(g in seq_len(ngroups)){
-        freq <- if(full) 1 else Data$Freq[[g]]
-        if(dentype == 'bfactor'){
-            rlist[[g]] <- Estep.bfactor(pars=pars[[g]], tabdata=tabdata, freq=Data$Freq[[g]],
-                                        Theta=gTheta[[g]], prior=prior[[g]],
-                                        Priorbetween=Priorbetween[[g]], specific=specific,
-                                        sitems=sitems, itemloc=itemloc, CUSTOM.IND=CUSTOM.IND,
-                                        Etable=Etable)
-        } else {
-            rlist[[g]] <- Estep.mirt(pars=pars[[g]], tabdata=tabdata, freq=Data$Freq[[g]],
-                                     CUSTOM.IND=CUSTOM.IND, Theta=gTheta[[g]],
-                                     prior=Prior[[g]], itemloc=itemloc, full=full, Etable=Etable)
+    if(dentype == 'mixture'){
+        lst <- Estep.mixture(pars=pars, tabdata=tabdata, freq=Data$Freq[[1L]],
+                             CUSTOM.IND=CUSTOM.IND, Theta=gTheta[[1L]],
+                             prior=Prior, itemloc=itemloc, full=full, Etable=Etable)
+        rlist <- lst$rlist
+        LL <- lst$LL
+    } else {
+        for(g in seq_len(ngroups)){
+            freq <- if(full) 1 else Data$Freq[[g]]
+            if(dentype == 'bfactor'){
+                rlist[[g]] <- Estep.bfactor(pars=pars[[g]], tabdata=tabdata, freq=Data$Freq[[g]],
+                                            Theta=gTheta[[g]], prior=prior[[g]],
+                                            Priorbetween=Priorbetween[[g]], specific=specific,
+                                            sitems=sitems, itemloc=itemloc, CUSTOM.IND=CUSTOM.IND,
+                                            Etable=Etable)
+            } else {
+                rlist[[g]] <- Estep.mirt(pars=pars[[g]], tabdata=tabdata, freq=Data$Freq[[g]],
+                                         CUSTOM.IND=CUSTOM.IND, Theta=gTheta[[g]],
+                                         prior=Prior[[g]], itemloc=itemloc, full=full, Etable=Etable)
+            }
+            LL <- LL + sum(freq * log(rlist[[g]]$expected), na.rm = TRUE)
+            rlist[[g]]$r1[is.nan(rlist[[g]]$r1)] <- 0
         }
-        LL <- LL + sum(freq * log(rlist[[g]]$expected), na.rm = TRUE)
-        rlist[[g]]$r1[is.nan(rlist[[g]]$r1)] <- 0
     }
     return(list(rlist=rlist, LL=LL))
 }
@@ -40,6 +48,26 @@ Estep.bfactor <- function(pars, tabdata, freq, Theta, prior, Priorbetween, speci
     if(is.null(itemtrace))
         itemtrace <- computeItemtrace(pars=pars, Theta=Theta, itemloc=itemloc, CUSTOM.IND=CUSTOM.IND)
     retlist <- .Call("Estepbfactor", itemtrace, prior, Priorbetween, tabdata, freq, sitems, Etable)
+    return(retlist)
+}
+
+# Estep for mixture Gaussian
+Estep.mixture <- function(pars, tabdata, freq, Theta, prior, itemloc, CUSTOM.IND, full = FALSE,
+                       itemtrace=NULL, deriv = FALSE, Etable = TRUE)
+{
+    ngroups <- length(pars)
+    if(is.null(itemtrace)){
+        itemtrace <- vector('list', ngroups)
+        for(g in seq_len(ngroups))
+            itemtrace[[g]] <- computeItemtrace(pars=pars[[g]], Theta=Theta,
+                                               itemloc=itemloc, CUSTOM.IND=CUSTOM.IND)
+
+    }
+    pi <- ExtractMixtures(pars)
+    browser()
+    retlist <- if(full) .Call("Estep_mixture2", itemtrace, prior, pi, tabdata, Etable)
+    else .Call("Estep_mixture", itemtrace, prior, pi, tabdata, freq, Etable)
+    if(deriv) retlist$itemtrace <- itemtrace
     return(retlist)
 }
 

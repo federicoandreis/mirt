@@ -184,7 +184,7 @@ ESTIMATION <- function(data, model, group, itemtype = NULL, guess = 0, upper = 1
         Data$groupNames <- levels(Data$group)
         if(any(grepl('-', Data$groupNames)))
             stop('Group names cannot contain a dash (-) character', call.=FALSE)
-        Data$ngroups <- length(Data$groupNames)
+        Data$ngroups <- if(!is.null(opts$ngroups)) opts$ngroups else length(Data$groupNames)
         Data$nitems <- ncol(Data$data)
         Data$N <- nrow(Data$data)
         Data$mins <- suppressWarnings(apply(data, 2L, min, na.rm=TRUE))
@@ -286,6 +286,7 @@ ESTIMATION <- function(data, model, group, itemtype = NULL, guess = 0, upper = 1
         Data$tabdatalong <- large$tabdata
         Data$tabdata <- large$tabdata2
         for(g in seq_len(Data$ngroups)){
+            if(g > 1L && opts$dentype == 'mixture') break
             select <- Data$group == Data$groupNames[g]
             Data$fulldata[[g]] <- PrepListFull$fulldata[select, , drop=FALSE]
             Data$Freq[[g]] <- large$Freq[[g]]
@@ -397,6 +398,7 @@ ESTIMATION <- function(data, model, group, itemtype = NULL, guess = 0, upper = 1
     }
     rr <- 0L
     for(g in seq_len(Data$ngroups)){
+        if(g > 1L && opts$dentype == 'mixture') break
         r <- Data$Freq[[g]]
         rr <- rr + r
     }
@@ -420,8 +422,9 @@ ESTIMATION <- function(data, model, group, itemtype = NULL, guess = 0, upper = 1
             warning('Multiple-group model may not be identified without providing anchor items',
                     call.=FALSE)
         for(j in seq_len(Data$ngroups)){
-            tmp <- apply(subset(Data$data, Data$group == Data$groupNames[j]), 2L,
-                         function(x) length(unique(na.omit(x)))) == Data$K
+            if(opts$dentype != 'mixture')
+                tmp <- apply(subset(Data$data, Data$group == Data$groupNames[j]), 2L,
+                             function(x) length(unique(na.omit(x)))) == Data$K
             for(i in which(!tmp)){
                 if(any(PrepList[[j]]$pars[[i]]@est))
                     stop(paste0('Multiple Group model will not be identified without ',

@@ -272,7 +272,7 @@
 #'
 #' }
 multipleGroup <- function(data, model, group, invariance = '', method = 'EM', rotate = 'oblimin',
-                          ...)
+                          dentype = 'Gaussian', ...)
 {
     Call <- match.call()
     dots <- list(...)
@@ -295,8 +295,9 @@ multipleGroup <- function(data, model, group, invariance = '', method = 'EM', ro
             stop('Model is not identified without further constrains (may require additional
                  anchoring items).', call.=FALSE)
     }
+    if(grepl('mixture', dentype)) group <- rep('full', nrow(data))
     mod <- ESTIMATION(data=data, model=model, group=group, invariance=invariance, method=method,
-                      rotate=rotate, ...)
+                      rotate=rotate, dentype=dentype, ...)
     if(is(mod, 'MultipleGroupClass'))
         mod@Call <- Call
     return(mod)

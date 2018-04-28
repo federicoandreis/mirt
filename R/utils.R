@@ -289,12 +289,6 @@ ExtractGroupPars <- function(x){
     if(x@itemclass < 0L) return(list(gmeans=0, gcov=matrix(1)))
     nfact <- x@nfact
     gmeans <- x@par[seq_len(nfact)]
-
-    # # Names are so often...
-    # if (length(x@par) > 2) {
-    #     names(x@par) <- c("MEAN_1", "COV_11", paste0("PHI_", 1:(length(x@par)-2)))
-    # }
-
     phi_matches <- grepl("PHI", x@parnames)
     if (any(phi_matches)) {
         phi <- x@par[phi_matches]
@@ -312,6 +306,10 @@ ExtractGroupPars <- function(x){
             gcov <- gcov + t(gcov) - diag(diag(gcov))
         return(list(gmeans=gmeans, gcov=gcov))
     }
+}
+
+ExtractMixtures <- function(pars){
+    return(rep(1, length(pars))/length(pars)) #TODO actually extract and transform pi pars
 }
 
 reloadConstr <- function(par, constr, obj){
@@ -1339,8 +1337,14 @@ makeopts <- function(method = 'MHRM', draws = 2000L, calcLL = TRUE, quadpts = NU
         opts$dcIRT_nphi <- as.integer(tmp[2L])
         stopifnot(opts$dcIRT_nphi > 1L)
     }
+    if(grepl('mixture', dentype)){
+        tmp <- strsplit(dentype, '-')[[1]]
+        dentype <- tmp[1L]
+        opts$ngroups <- as.integer(tmp[2L])
+        stopifnot(opts$n_mixture > 1L)
+    }
     if(!(dentype %in% c('Gaussian', 'empiricalhist', 'discrete', 'empiricalhist_Woods', "Davidian",
-                        "EH", "EHW")))
+                        "EH", "EHW", 'mixture')))
         stop('dentype not supported', call.=FALSE)
     opts$method = method
     if(draws < 1) stop('draws must be greater than 0', call.=FALSE)
@@ -1402,6 +1406,10 @@ makeopts <- function(method = 'MHRM', draws = 2000L, calcLL = TRUE, quadpts = NU
     opts$internal_constraints  <- ifelse(is.null(technical$internal_constraints),
                                          TRUE, technical$internal_constraints)
     opts$keep_vcov_PD  <- ifelse(is.null(technical$keep_vcov_PD), TRUE, technical$keep_vcov_PD)
+    if(dentype == 'mixture'){
+        if(opts$method != 'EM')
+            stop('Mixture IRT densities only supported when method = \'EM\' ', call.=FALSE)
+    }
     if(dentype %in% c("EH", 'EHW')){
         if(opts$method != 'EM')
             stop('empirical histogram method only applicable when method = \'EM\' ', call.=FALSE)
