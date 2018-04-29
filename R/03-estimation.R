@@ -577,6 +577,7 @@ ESTIMATION <- function(data, model, group, itemtype = NULL, guess = 0, upper = 1
         logPrior <- ESTIMATE$logPrior
         Pl <- vector('list', length(rlist))
         for(g in seq_len(Data$ngroups)){
+            if(g > 1L && opts$dentype == 'mixture') break
             Pl[[g]] <- rlist[[g]]$expected
             Pltmp <- Pl[[g]]
             if(opts$full){

@@ -357,7 +357,7 @@ void _Estep_mixture(vector<double> &expected, vector<double> &r1vec, const Numer
                 if (data(pat,item))
                 	for (int g = 0; g < ngroup; ++g)
 	                    for(int q = 0; q < nquad; ++q)
-	                        r1vec[q + item*nquad + g*nitems*nquad] += posterior[q + g*nquad];
+	                        r1vec[q + item*nquad] += posterior[q + g*nquad];
         }
     } //end main
 
@@ -377,11 +377,11 @@ RcppExport SEXP Estep_mixture(SEXP Ritemtrace, SEXP Rprior, SEXP RX, SEXP Rr, SE
     const int nitems = data.ncol();
     const int npat = r.size();
     vector<double> expected(npat, 0.0);
-    vector<double> r1vec(nquad*nitems*ngroup, 0.0);
+    vector<double> r1vec(nquad*nitems, 0.0);
     List ret;
 
     _Estep_mixture(expected, r1vec, prior, r, data, itemtrace, Etable);
-    NumericMatrix r1 = vec2mat(r1vec, nquad, nitems*ngroup);
+    NumericMatrix r1 = vec2mat(r1vec, nquad, nitems);
     ret["r1"] = r1;
     ret["expected"] = wrap(expected);
     return(ret);

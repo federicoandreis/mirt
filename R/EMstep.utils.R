@@ -58,19 +58,20 @@ Estep.mixture <- function(pars, tabdata, freq, Theta, prior, itemloc, CUSTOM.IND
     pi <- ExtractMixtures(pars)
     if(is.null(itemtrace)){
         itemtrace <- vector('list', ngroups)
-        for(g in seq_len(ngroups))
+        for(g in seq_len(ngroups)){
             itemtrace[[g]] <- computeItemtrace(pars=pars[[g]], Theta=Theta,
-                                               itemloc=itemloc, CUSTOM.IND=CUSTOM.IND)*pi[g]
+                                               itemloc=itemloc, CUSTOM.IND=CUSTOM.IND)
+            prior[[g]] <- prior[[g]] * pi[g]
+        }
     }
     tmp <- if(full) .Call("Estep_mixture2", do.call(rbind, itemtrace),
                               do.call(cbind, prior), tabdata, Etable)
     else .Call("Estep_mixture", do.call(rbind, itemtrace),
                do.call(cbind, prior), tabdata, freq, Etable)
-    rlist <- vector("list", ngroups)
+    retlist <- vector('list', ngroups)
     for(g in seq_len(ngroups))
-        rlist[[g]] <- list(r1 = tmp$r1[,1L:ncol(tabdata) + (g-1L)*ncol(tabdata)],
-                           expected = if(g == 1L) tmp$expected else NA)
-    return(rlist)
+        retlist[[g]] <- list(r1=tmp$r1 * pi[g], expected= if(g == 1) tmp$expected else NA)
+    return(retlist)
 }
 
 Mstep <- function(pars, est, longpars, ngroups, J, gTheta, itemloc, PrepList, L, ANY.PRIOR,
