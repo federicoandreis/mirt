@@ -322,16 +322,69 @@ RcppExport SEXP EAPgroup(SEXP Ritemtrace, SEXP Rtabdata, SEXP RTheta, SEXP Rprio
     END_RCPP
 }
 
-void _Estep_mixture(vector<double> &expected, vector<double> &r1vec, const vector<double> &prior,
+void _Estep_mixture(vector<double> &expected, vector<double> &r1vec, const NumericMatrix &prior,
             const vector<double> &r, const IntegerMatrix &data, const NumericMatrix &itemtrace,
             const bool &Etable)
 {
+	const int nquad = prior.nrow();
+	const int ngroup = prior.ncol();
+    const int nitems = data.ncol();
+    const int npat = r.size();
+
+    for (int pat = 0; pat < npat; ++pat){
+        if(r[pat] < 1e-10) continue;
+        vector<double> posterior(nquad*ngroup,1.0);
+        for(int g = 0; g < ngroup; ++g)
+	        for(int q = 0; q < nquad; ++q)
+	            posterior[q + nquad*g] = posterior[q + nquad*g] * prior(q, g);
+        for (int item = 0; item < nitems; ++item)
+            if(data(pat,item))
+            	for (int g = 0; g < ngroup; ++g)
+	                for(int q = nquad*g; q < nquad*(g+1); ++q)
+	                    posterior[q] *= itemtrace(q,item);
+        const double maxp = *std::max_element(posterior.begin(), posterior.end());
+        double expd = 0.0;
+        for(int i = 0; i < nquad*ngroup; ++i)
+            expd += posterior[i]/maxp;
+        expd *= maxp;
+        if(expd > ABSMIN){
+            for(int q = 0; q < nquad*ngroup; ++q)
+                posterior[q] = r[pat] * posterior[q] / expd;
+        } else expd = ABSMIN;
+        expected[pat] = expd;
+        if(Etable){
+            for (int item = 0; item < nitems; ++item)
+                if (data(pat,item))
+                	for (int g = 0; g < ngroup; ++g)
+	                    for(int q = 0; q < nquad; ++q)
+	                        r1vec[q + item*nquad + g*nitems*nquad] += posterior[q + g*nquad];
+        }
+    } //end main
 
 }
 
-RcppExport SEXP Estep_mixture(SEXP Ritemtrace, SEXP Rprior, SEXP Rpi, SEXP RX, SEXP Rr, SEXP REtable)
+RcppExport SEXP Estep_mixture(SEXP Ritemtrace, SEXP Rprior, SEXP RX, SEXP Rr, SEXP REtable)
 {
     BEGIN_RCPP
+
+    const NumericMatrix prior(Rprior);
+    const vector<double> r = as< vector<double> >(Rr);
+    const bool Etable = as<bool>(REtable);
+    const IntegerMatrix data(RX);
+    const NumericMatrix itemtrace(Ritemtrace);
+    const int nquad = prior.nrow();
+    const int ngroup = prior.ncol();
+    const int nitems = data.ncol();
+    const int npat = r.size();
+    vector<double> expected(npat, 0.0);
+    vector<double> r1vec(nquad*nitems*ngroup, 0.0);
+    List ret;
+
+    _Estep_mixture(expected, r1vec, prior, r, data, itemtrace, Etable);
+    NumericMatrix r1 = vec2mat(r1vec, nquad, nitems*ngroup);
+    ret["r1"] = r1;
+    ret["expected"] = wrap(expected);
+    return(ret);
 
     END_RCPP
 }
@@ -342,7 +395,7 @@ void _Estep2_mixture(vector<double> &expected, vector<double> &r1vec, const Nume
 
 }
 
-RcppExport SEXP Estep_mixture2(SEXP Ritemtrace, SEXP Rprior, SEXP Rpi, SEXP RX, SEXP REtable)
+RcppExport SEXP Estep_mixture2(SEXP Ritemtrace, SEXP Rprior, SEXP RX, SEXP REtable)
 {
     BEGIN_RCPP
 

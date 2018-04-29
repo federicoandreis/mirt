@@ -3,11 +3,10 @@ Estep <- function(pars, Data, gTheta, prior, Prior, Priorbetween, specific, site
     LL <- 0
     tabdata <- if(full) Data$fulldata[[1L]] else Data$tabdatalong
     if(dentype == 'mixture'){
-        lst <- Estep.mixture(pars=pars, tabdata=tabdata, freq=Data$Freq[[1L]],
-                             CUSTOM.IND=CUSTOM.IND, Theta=gTheta[[1L]],
-                             prior=Prior, itemloc=itemloc, full=full, Etable=Etable)
-        rlist <- lst$rlist
-        LL <- lst$LL
+        rlist <- Estep.mixture(pars=pars, tabdata=tabdata, freq=Data$Freq[[1L]],
+                               CUSTOM.IND=CUSTOM.IND, Theta=gTheta[[1L]],
+                               prior=Prior, itemloc=itemloc, full=full, Etable=Etable)
+        LL <- sum(Data$Freq[[1L]] * log(rlist[[1L]]$expected))
     } else {
         for(g in seq_len(ngroups)){
             freq <- if(full) 1 else Data$Freq[[g]]
@@ -56,19 +55,22 @@ Estep.mixture <- function(pars, tabdata, freq, Theta, prior, itemloc, CUSTOM.IND
                        itemtrace=NULL, deriv = FALSE, Etable = TRUE)
 {
     ngroups <- length(pars)
+    pi <- ExtractMixtures(pars)
     if(is.null(itemtrace)){
         itemtrace <- vector('list', ngroups)
         for(g in seq_len(ngroups))
             itemtrace[[g]] <- computeItemtrace(pars=pars[[g]], Theta=Theta,
-                                               itemloc=itemloc, CUSTOM.IND=CUSTOM.IND)
-
+                                               itemloc=itemloc, CUSTOM.IND=CUSTOM.IND)*pi[g]
     }
-    pi <- ExtractMixtures(pars)
-    browser()
-    retlist <- if(full) .Call("Estep_mixture2", itemtrace, prior, pi, tabdata, Etable)
-    else .Call("Estep_mixture", itemtrace, prior, pi, tabdata, freq, Etable)
-    if(deriv) retlist$itemtrace <- itemtrace
-    return(retlist)
+    tmp <- if(full) .Call("Estep_mixture2", do.call(rbind, itemtrace),
+                              do.call(cbind, prior), tabdata, Etable)
+    else .Call("Estep_mixture", do.call(rbind, itemtrace),
+               do.call(cbind, prior), tabdata, freq, Etable)
+    rlist <- vector("list", ngroups)
+    for(g in seq_len(ngroups))
+        rlist[[g]] <- list(r1 = tmp$r1[,1L:ncol(tabdata) + (g-1L)*ncol(tabdata)],
+                           expected = if(g == 1L) tmp$expected else NA)
+    return(rlist)
 }
 
 Mstep <- function(pars, est, longpars, ngroups, J, gTheta, itemloc, PrepList, L, ANY.PRIOR,
