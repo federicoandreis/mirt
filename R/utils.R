@@ -290,7 +290,7 @@ ExtractGroupPars <- function(x){
     nfact <- x@nfact
     gmeans <- x@par[seq_len(nfact)]
     phi_matches <- grepl("PHI", x@parnames)
-    if (any(phi_matches)) {
+    if (x@dentype == "Davidian") {
         phi <- x@par[phi_matches]
         tmp <- x@par[-c(seq_len(nfact), which(phi_matches))]
         gcov <- matrix(0, nfact, nfact)
@@ -299,7 +299,9 @@ ExtractGroupPars <- function(x){
             gcov <- gcov + t(gcov) - diag(diag(gcov))
         return(list(gmeans=gmeans, gcov=gcov, phi=phi))
     } else {
-        tmp <- x@par[-seq_len(nfact)]
+        par <- x@par
+        if(x@dentype == "mixture") par <- par[-length(par)] # drop pi
+        tmp <- par[-seq_len(nfact)]
         gcov <- matrix(0, nfact, nfact)
         gcov[lower.tri(gcov, diag=TRUE)] <- tmp
         if(nfact != 1L)
@@ -309,7 +311,10 @@ ExtractGroupPars <- function(x){
 }
 
 ExtractMixtures <- function(pars){
-    return(rep(1, length(pars))/length(pars)) #TODO actually extract and transform pi pars
+    pick <- length(pars[[1L]])
+    logit_pi <- sapply(pars, function(x) x[[pick]]@par[length(x[[pick]]@par)])
+    pi <- exp(logit_pi)
+    pi / sum(pi)
 }
 
 reloadConstr <- function(par, constr, obj){
@@ -448,7 +453,6 @@ updatePrior <- function(pars, gTheta, list, ngroups, nfact, J,
             for(g in seq_len(ngroups))
                 Prior[[g]] <- matrix(rep(1 / length(gTheta[[g]])),
                                          nrow(lrPars@mus), nrow(gTheta[[g]]))
-
         } else {
             for(g in seq_len(ngroups))
                 Prior[[g]] <- matrix(rep(1 / length(Prior[[g]]), length(Prior[[g]])))

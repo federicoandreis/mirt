@@ -214,7 +214,6 @@ Mstep.LL_alt <- function(x0, optim_args){
 }
 
 Mstep.LL.group <- function(pars, Theta, keep_vcov_PD){
-
     pick <- length(pars)
     rr <- pars[[pick]]@rr
     if(pars[[pick]]@itemclass < 0L){

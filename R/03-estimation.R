@@ -213,7 +213,7 @@ ESTIMATION <- function(data, model, group, itemtype = NULL, guess = 0, upper = 1
                          customGroup=customGroup, spline_args=spline_args, monopoly.k=monopoly.k,
                          fulldata=opts$PrepList[[1L]]$fulldata, key=key, opts=opts,
                          gpcm_mats=gpcm_mats, internal_constraints=opts$internal_constraints,
-                         dcIRT_nphi=opts$dcIRT_nphi)
+                         dcIRT_nphi=opts$dcIRT_nphi, dentype=opts$dentype)
             if(!is.null(dots$Return_PrepList)) return(PrepListFull)
         }
         parnumber <- max(PrepList[[1L]]$pars[[Data$nitems+1L]]@parnum) + 1L
