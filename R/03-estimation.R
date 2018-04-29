@@ -376,6 +376,12 @@ ESTIMATION <- function(data, model, group, itemtype = NULL, guess = 0, upper = 1
             }
         }
     }
+    if(opts$dentype == 'mixture'){
+        tmp <- length(pars[[1L]][[nitems + 1L]]@par)
+        pars[[g]][[nitems + 1L]]@est[tmp] <- FALSE
+        for(g in 1L:Data$ngroups)
+            pars[[g]][[nitems + 1L]]@par[tmp] <- g - 1
+    }
     if(RETURNVALUES){
         for(g in seq_len(Data$ngroups))
             PrepList[[g]]$pars <- pars[[g]]

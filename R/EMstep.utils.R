@@ -176,6 +176,11 @@ Mstep <- function(pars, est, longpars, ngroups, J, gTheta, itemloc, PrepList, L,
             longpars[pick3[tmp]] <- c(optDC$mean_var[g, ], optDC$par[pick2])[tmp]
         }
     }
+    if (dentype == "mixture") {
+        optMix <- Mstep.mixture(pars=pars, J=J, gTheta=gTheta, constrain=constrain)
+        browser()
+
+    }
     if(full){
         res <- Mstep.LR(Theta=gTheta[[1L]], CUSTOM.IND=CUSTOM.IND, pars=pars[[1L]], lrPars=lrPars,
                         itemloc=itemloc, fulldata=PrepList[[1L]]$fulldata, prior=Prior[[1L]])
@@ -322,6 +327,13 @@ Mstep.DC.grad_group <- function (phi, gTheta, rr, constrain, orgphi) {
     for(g in seq_len(length(gTheta)))
         grad <- c(grad, Mstep.DC.grad(orgphi[[g]], gTheta[[g]], rr[[g]]))
     grad
+}
+
+Mstep.mixture <- function(pars, gTheta, J, constrain){
+    rr <- pars[[1L]][[J + 1L]]@rr
+    for(g in 2L:length(pars))
+        rr <- rr + pars[[g]][[J + 1L]]@rr
+    browser()
 }
 
 LogLikMstep <- function(x, Theta, itemloc, rs, any.prior, CUSTOM.IND){
