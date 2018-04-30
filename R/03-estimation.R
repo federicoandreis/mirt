@@ -198,6 +198,8 @@ ESTIMATION <- function(data, model, group, itemtype = NULL, guess = 0, upper = 1
         PrepList <- vector('list', Data$ngroups)
         names(PrepList) <- Data$groupNames
         tmp <- 1L:Data$ngroups
+        if(opts$dentype == "mixture")
+            Data$groupNames <- paste0("MIXTURE_", seq_len(Data$ngroups))
         model <- buildModelSyntax(model, J=Data$nitems, groupNames=Data$groupNames,
                                   itemtype=itemtype)
         Data$model <- model
@@ -275,7 +277,9 @@ ESTIMATION <- function(data, model, group, itemtype = NULL, guess = 0, upper = 1
             stringfulldata <- apply(tmpdata, 1L, paste, sep='', collapse = '/')
             stringtabdata <- unique(stringfulldata)
             tmptabdata <- maketabData(stringfulldata=stringfulldata, stringtabdata=stringtabdata,
-                                      group=Data$group, groupNames=Data$groupNames, nitem=Data$nitems,
+                                      group=Data$group,
+                                      groupNames=if(opts$dentype != 'mixture') Data$groupNames else 'full',
+                                      nitem=Data$nitems,
                                       K=PrepListFull$K, itemloc=PrepListFull$itemloc,
                                       Names=PrepListFull$Names, itemnames=PrepListFull$itemnames,
                                       survey.weights=survey.weights)
@@ -286,10 +290,14 @@ ESTIMATION <- function(data, model, group, itemtype = NULL, guess = 0, upper = 1
         Data$tabdatalong <- large$tabdata
         Data$tabdata <- large$tabdata2
         for(g in seq_len(Data$ngroups)){
-            if(g > 1L && opts$dentype == 'mixture') break
-            select <- Data$group == Data$groupNames[g]
-            Data$fulldata[[g]] <- PrepListFull$fulldata[select, , drop=FALSE]
-            Data$Freq[[g]] <- large$Freq[[g]]
+            if(opts$dentype == 'mixture'){
+                Data$fulldata[[g]] <- PrepListFull$fulldata
+                Data$Freq[[g]] <- large$Freq[[1L]]
+            } else {
+                select <- Data$group == Data$groupNames[g]
+                Data$fulldata[[g]] <- PrepListFull$fulldata[select, , drop=FALSE]
+                Data$Freq[[g]] <- large$Freq[[g]]
+            }
         }
     }
     if(opts$returnPrepList) return(PrepList)
@@ -381,13 +389,13 @@ ESTIMATION <- function(data, model, group, itemtype = NULL, guess = 0, upper = 1
         pars[[g]][[nitems + 1L]]@est[tmp] <- FALSE
         for(g in 1L:Data$ngroups)
             pars[[g]][[nitems + 1L]]@par[tmp] <- g - 1
+        names(PrepList) <- Data$groupNames
     }
     if(RETURNVALUES){
         for(g in seq_len(Data$ngroups))
             PrepList[[g]]$pars <- pars[[g]]
         return(ReturnPars(PrepList, PrepList[[1L]]$itemnames, lr.random=latent.regression$lr.random,
                           random=mixed.design$random, lrPars=lrPars, MG = TRUE))
-
     }
     constrain <- UpdateConstrain(pars=pars, constrain=constrain, invariance=invariance, nfact=Data$nfact,
                                  nLambdas=nLambdas, J=nitems, ngroups=Data$ngroups, PrepList=PrepList,
