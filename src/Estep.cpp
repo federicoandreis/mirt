@@ -333,32 +333,40 @@ void _Estep_mixture(vector<double> &expected, vector<double> &r1vec, const Numer
 
     for (int pat = 0; pat < npat; ++pat){
         if(r[pat] < 1e-10) continue;
-        vector<double> posterior(nquad*ngroup,1.0);
-        for(int g = 0; g < ngroup; ++g)
+        vector<double> posterior2(nquad*ngroup,1.0);
+        for(int g = 0; g < ngroup; ++g){
+        	vector<double> posterior(nquad,1.0);
 	        for(int q = 0; q < nquad; ++q)
-	            posterior[q + nquad*g] = posterior[q + nquad*g] * prior(q, g);
-        for (int item = 0; item < nitems; ++item)
-            if(data(pat,item))
-            	for (int g = 0; g < ngroup; ++g)
-	                for(int q = nquad*g; q < nquad*(g+1); ++q)
-	                    posterior[q] *= itemtrace(q,item);
-        const double maxp = *std::max_element(posterior.begin(), posterior.end());
+	            posterior[q] = posterior[q] * prior(q, g);
+	        for (int item = 0; item < nitems; ++item)
+	            if(data(pat,item))
+		            for(int q = 0; q < nquad; ++q)
+		                posterior[q] *= itemtrace(q + nquad*g,item);
+        	for(int q = 0; q < nquad; ++q)
+	            posterior2[q + g*nquad] = posterior[q];
+	        const double maxp = *std::max_element(posterior.begin(), posterior.end());
+        	double expd = 0.0;
+	        for(int i = 0; i < nquad; ++i)
+	            expd += posterior[i]/maxp;
+		    expd *= maxp;
+	        if(expd > ABSMIN){
+	            for(int q = 0; q < nquad; ++q)
+	                posterior[q] = r[pat] * posterior[q] / expd;
+	        }
+		    if(Etable){
+	            for (int item = 0; item < nitems; ++item)
+	                if (data(pat,item))
+		                for(int q = 0; q < nquad; ++q)
+		                    r1vec[q + item*nquad + g*nitems*nquad] += posterior[q];
+	        }
+        }
+	    const double maxp = *std::max_element(posterior2.begin(), posterior2.end());
         double expd = 0.0;
         for(int i = 0; i < nquad*ngroup; ++i)
-            expd += posterior[i]/maxp;
+            expd += posterior2[i]/maxp;
         expd *= maxp;
-        if(expd > ABSMIN){
-            for(int q = 0; q < nquad*ngroup; ++q)
-                posterior[q] = r[pat] * posterior[q] / expd;
-        } else expd = ABSMIN;
+        if(expd < ABSMIN) expd = ABSMIN;
         expected[pat] = expd;
-        if(Etable){
-            for (int item = 0; item < nitems; ++item)
-                if (data(pat,item))
-                	for (int g = 0; g < ngroup; ++g)
-	                    for(int q = 0; q < nquad; ++q)
-	                        r1vec[q + item*nquad + g*nitems*nquad] += posterior[q + g*nquad];
-        }
     } //end main
 
 }
